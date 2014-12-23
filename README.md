@@ -7,7 +7,7 @@ This is an HTTP server for testing applications built against [Exosite's](https:
 - [listing](https://docs.exosite.com/rpc#listing)
 - [lookup](https://docs.exosite.com/rpc#lookup)
 
-Compared with testing against the One Platform, onep-mock allows tests to run faster because it uses an in-memory database and runs locally with your app. It also provide richer feedback about app misbehavior and allows for working offline.
+Compared with testing against One Platform, onep-mock allows tests to run faster because it uses an in-memory database and can run locally with your app. It also provide richer feedback about app misbehavior and allows for working offline.
 
 ```
 $ npm install

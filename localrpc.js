@@ -7,9 +7,9 @@ var _ = require('underscore');
 var db = require('./db');
 var Db = new db.Db();
 
-exports.authenticate = function(auth, callback) {
+function authenticate(auth, callback) {
   Db.findResourceByAuth(auth, callback);
-};
+}
 
 /**
  * Generate an RID
@@ -312,7 +312,7 @@ function makeCall(call, resource, callback) {
  * @param {object} caller - 1P resource call is made on behalf of
  * @param {callCallback} callback - 
  */
-exports.call = function(call, caller, callback) {
+function call(call, caller, callback) {
   var response = null;
   makeCall(call, caller, function(error, response) {
     if (error) { 
@@ -333,5 +333,56 @@ exports.call = function(call, caller, callback) {
       response.id = call.id;
     } 
     callback(null, response);
+  });
+};
+
+/**
+ * Make an RPC request.
+ */
+exports.request = function(body, callback) {
+  var localResponses = [];
+  var overallError = null;
+  
+  function collectResponse(err, response) {
+    if (err) { 
+      console.log(err); 
+      overallError = {
+        "error": {
+          "code": 500,
+          "message": err,
+          "context": "call"
+        }
+      };
+      return;
+    }
+    localResponses.push(response);
+  }
+  
+  var required = ['auth', 'calls'];
+  for (var i = 0; i < required.length; i++) {
+    if (!_.has(body, required[i])) {
+      return callback(null, {
+        "error": { 
+          "code": 400, 
+          "message": "Invalid request",
+          "context": required[i]
+        }
+      });
+    }
+  }
+
+  authenticate(body.auth, function(err, caller) {
+    if (err) { return callback(err); }
+    if (caller === null) {
+      return callback(null, {
+        "error": {
+          "code": 401,
+          "message": "Authorization failed"
+      }});
+    }
+    for (var i = 0; i < body.calls.length; i++) {
+      call(body.calls[i], caller, collectResponse);
+    }
+    callback(null, overallError === null ? localResponses : overallError);
   });
 };

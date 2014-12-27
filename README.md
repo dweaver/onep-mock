@@ -9,7 +9,7 @@ This is an HTTP server for testing applications built against [Exosite's](https:
 - [create](https://docs.exosite.com/rpc#create-client) (limits are not stored but not enforced)
 - [drop](https://docs.exosite.com/rpc#drop)
 
-Compared with testing against One Platform, onep-mock allows tests to run faster because it uses an in-memory database and can run locally with your app. It also provide richer feedback about app misbehavior and allows for working offline.
+Compared with testing against One Platform, onep-mock allows tests to run faster because it uses an in-memory database and can run locally with your app. It also provides more feedback about app misbehavior and allows for working offline.
 
 ```
 $ npm install
@@ -17,7 +17,7 @@ $ supervisor mock.js
 One Platform mock server listening on 3001
 ```
 
-The server's in-memory database starts out with a root CIK of all 1's and some more debug data underneath it. Once the server is running, you can run some [Exoline](https://github.com/exosite/exoline) commands against it:
+The server's in-memory database starts out with a root CIK of all 1s, with some more debug data underneath it. Once the server is running, you can run some [Exoline](https://github.com/exosite/exoline) commands against it:
 
 ```
 $ exo --http --host=localhost --port=3001 tree 1111111111111111111111111111111111111111

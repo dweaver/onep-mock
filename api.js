@@ -14,40 +14,11 @@ function logobj(obj) {
     console.log(JSON.stringify(obj, null, '\t'));
 }
 
+/**
+ * Thin web API wrapper for RPC, delegating actual call handling to localrpc.
+ */
 exports.rpc = function (req, res) {
-  var localResponses = [];
-  var overallError = null;
-  
-  function collectResponse(err, response) {
-    if (err) { 
-      console.log(err); 
-      overallError = {
-        "error": {
-          "code": 500,
-          "message": err,
-          "context": "call"
-        }
-      };
-      return;
-    }
-    localResponses.push(response);
-  }
-  // authenticate
-  localrpc.authenticate(req.body.auth, function(err, caller) {
-    if (caller === null) {
-      res.json({"error": 
-        {
-          "code": 401,
-          "message": "Invalid",
-          "context": "auth"
-        }
-      });
-    } else {
-      for (var i = 0; i < req.body.calls.length; i++) {
-        var call = req.body.calls[i];
-        localrpc.call(call, caller, collectResponse);
-      }
-      res.json(overallError === null ? localResponses : overallError);
-    }
+  localrpc.request(req.body, function(err, response) {
+    res.json(response);
   });
 };

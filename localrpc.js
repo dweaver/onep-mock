@@ -9,12 +9,26 @@ var Db = new db.Db();
 
 exports.authenticate = function(auth, callback) {
   Db.findResourceByAuth(auth, callback);
+};
+
+/**
+ * Generate an RID
+ *
+ * @returns {String} - random identifier
+ */
+function makeid() {
+  var text = "";
+  var possible = "abcdef0123456789";
+  for( var i=0; i < 40; i++ ) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
 }
 
 /**
  * Look up argument
  */
-function ridForArg(arg, resource) {
+function getRidForArg(arg, resource) {
   if (typeof arg === 'string') {
     return arg;
   } else {
@@ -22,18 +36,124 @@ function ridForArg(arg, resource) {
       if (arg.alias === '') {
         return resource.rid;
       }
-      if (_.has(resource, 'aliases')) {
-        _.each(resource.aliases, function(aliases, rid) {
-          if (_.contains(aliases, arg.alias)) {
+      if (_.has(resource.info, 'aliases')) {
+        var rids = _.keys(resource.info.aliases);
+        for (var i = 0; i < rids.length; i++) {
+          var rid = rids[i];
+          if (_.contains(resource.info.aliases[rid], arg.alias)) {
             return rid;
           } 
-        });
+        }
       }
     }
   } 
 }
 
-function make_call(call, resource, callback) {
+/** 
+ * Validate a description argument.
+ */
+function validateDescription(description, type) {
+  function validateFormat(description) {
+    if (!_.has(description, 'format')) { return 'invalid: missing "format"'; }
+    var formats = ['float', 'integer', 'string'];
+    if (!_.contains(formats, description.format)) { 
+      return 'invalid: format must be in ' + JSON.stringify(formats); 
+    }
+    return description;
+  }
+  switch(type) {
+
+    case 'client':
+      // http://docs.exosite.com/rpc/#create-client 
+      _.defaults(description, {
+        limits: {},
+        locked: false,
+        meta: "",
+        name: "",
+        public: false 
+      });
+      _.defaults(description.limits, {
+        client: 0,
+        dataport: 0,
+        datarule: 0,
+        disk: 0,
+        dispatch: 0,
+        email: 0,
+        email_bucket: 0,
+        http: 0,
+        http_bucket: 0,
+        share: 0,
+        sms: 0,
+        sms_bucket: 0,
+        xmpp: 0,
+        xmpp_bucket: 0
+      });
+      description = _.pick(description, ['limits', 'locked', 'meta', 'name', 'public']);
+      break;
+
+    case 'dataport':
+      // http://docs.exosite.com/rpc/#create-dataport
+      description = validateFormat(description);
+      if (typeof description !== 'object') {
+        return description;
+      }
+      _.defaults(description, {
+        meta: "",
+        name: "",
+        preprocess: [],
+        public: false,
+        retention: {},
+        subscribe: null
+      });
+      _.defaults(description.retention, {
+        count: "infinity",
+        duration: "infinity"
+      });
+      description = _.pick(description, ['format', 'meta', 'name', 'preprocess', 'public', 'retention', 'subscribe']);
+      break;
+
+    case 'datarule':
+      // http://docs.exosite.com/rpc/#create-datarule
+      description = validateFormat(description);
+      if (typeof description !== 'object') {
+        return description;
+      }
+      if (!_.has(description, 'rule')) { return 'missing "rule"'; }
+      var rules = _.keys(description.rule);
+      if (rules.length !== 1) { return 'wrong number of rules'; }
+      if (!_.contains(['simple', 'timeout', 'interval', 'duration', 'count', 'script'], rules[0])) {
+        return 'unrecognized rule ' + rules[0];
+      } 
+      if (rules[0] === 'script' && typeof description.rule.script !== 'string') {
+        return '"script" rule must be a string'; 
+      }
+      // TODO: validate simple datarules
+      _.defaults(description, {
+        meta: "",
+        name: "",
+        preprocess: [],
+        public: false,
+        retention: {},
+        subscribe: null
+      });
+      _.defaults(description.retention, {
+        count: "infinity",
+        duration: "infinity"
+      });
+      description = _.pick(description, ['format', 'meta', 'name', 'preprocess', 'public', 'retention', 'subscribe']);
+      
+      break;
+    case 'dispatch':
+      break;
+    case 'clone':
+      return 'create clone is not supported';
+    default:
+      return 'unrecognized create type ' + type;
+  }
+  return description;
+}
+
+function makeCall(call, resource, callback) {
   function filterInfo(info, options) {
     if (options.length === 0) {
       return info;
@@ -46,15 +166,17 @@ function make_call(call, resource, callback) {
     });
     return inf;
   }
+  var options = null;
+  var rid = null;
   // make a call on behalf of resource,
   // and call callback.
   switch (call.procedure) {
     case 'info':  
-      var rid = ridForArg(call.arguments[0], resource);
+      rid = getRidForArg(call.arguments[0], resource);
       if (!rid) {
-        callback('Alias lookup failed for ' + JSON.stringify(call.arguments[0]));
+        return callback('Alias lookup failed for ' + JSON.stringify(call.arguments[0]));
       }
-      var options = call.arguments[1];
+      options = call.arguments[1];
       var supported_attrs = ['description', 'basic', 'key', 'aliases', 'subscribers', 'shares', 'tags'];
       if (_.isEmpty(options)) {
         options = _.object(_.map(supported_attrs, function(a) { return [a, true]; }));
@@ -67,34 +189,31 @@ function make_call(call, resource, callback) {
       }
       
       Db.findResourceByRIDInResource(resource, rid, function(error, target_resource) {
-        if (error) callback(error)
-        else {
-          if (!target_resource) {
-            callback('Failed to find resource ' + rid + ' in ' + resource.rid);
-          } else {
-            callback(null, {
-              status: 'ok',
-              result: filterInfo(target_resource.info, options)
-            });
-          }
+        if (error) { return callback(error); }
+        if (!target_resource) {
+          callback('Failed to find resource ' + rid + ' in ' + resource.rid);
+        } else {
+          callback(null, {
+            status: 'ok',
+            result: filterInfo(target_resource.info, options)
+          });
         }
       });
       break;
     case 'listing':
       var type_list = call.arguments[0];
       // ignored for now
-      var options = call.arguments[1];
-      if (!(_.keys(options).length === 0 
-            || (_.keys(options).length === 1 && 
-                options.owned === true))) {
+      options = call.arguments[1];
+      if (!(_.keys(options).length === 0 ||
+          (_.keys(options).length === 1 && 
+          options.owned === true))) {
         callback('listing only supports option "owned"');
       }
       var result = {};
       if (_.has(resource.info, 'children')) {
         _.each(type_list, function(typ) {
-          console.log('resource.info.children:', resource.info.children);
           result[typ] = _.pluck(
-            _.filter(resource.info.children, function(r) { console.log('r:', r); return r.info.basic.type === typ }),
+            _.filter(resource.info.children, function(r) { return r.info.basic.type === typ; }),
             'rid');
         });
       }
@@ -121,27 +240,98 @@ function make_call(call, resource, callback) {
           break;
         default:
           callback('lookup only supports "alias"');
-          break
+          break;
       }
       break;
+
+    case 'create':
+      var type = call.arguments[0];
+      var desc = call.arguments[1];
+      desc = validateDescription(desc, type);
+      if (typeof desc !== 'object') {
+        // here's where the platform gives you the error 'invalid'
+        callback(desc);
+      }
+      var info = {
+        basic: {
+          type: type,
+          modified: Math.round(new Date().getTime() / 1000),
+          status: 'activated',
+          subscribers: 0 
+        },  
+        tags: [],
+        shares: [],
+        subscribers: [],
+        description: desc
+      };
+      rid = makeid();
+      var newResource = {
+        rid: rid,
+        info: info
+      }; 
+      if (type === 'client') {
+        newResource.info.children = [];
+        newResource.info.key = makeid();
+        newResource.info.aliases = [];
+      }
+      resource.info.children.push(newResource);
+      callback(null, {
+              status: 'ok',
+              result: rid
+      });
+      break;
+
+    case 'drop':
+      rid = getRidForArg(call.arguments[0], resource);
+      if (!rid) {
+        return callback('Alias lookup failed for ' + JSON.stringify(call.arguments[0]));
+      }
+      Db.dropResource(resource, rid, function(err) {
+        if (err) { return callback(err); }
+        callback(null, { status: 'ok' });
+      });
+      break;
+
     default:
       throw 'Mock server does not support procedure ' + call.procedure;
   }  
 }
 
+/**
+ * Callback for responding to a 1P RPC call
+ *
+ * @callback callCallback
+ * @param {string} err - error message for individual call failure
+ * @param {object} response - RPC call response object (may be an error)
+ */
+
+/**
+ * Makes a single RPC call, e.g., read, create
+ *
+ * @param {object} call - call itself
+ * @param {object} caller - 1P resource call is made on behalf of
+ * @param {callCallback} callback - 
+ */
 exports.call = function(call, caller, callback) {
   var response = null;
-  var rid = caller.rid;
-  Db.findResourceByRID(rid, function(error, resource) {
-    if (error) callback(error)
-    else {
-      make_call(call, resource, function(error, response) {
-        if (error) { return callback(error); }
-        if (call.hasOwnProperty('id')) {
-          response.id = call.id;
-        } 
-        callback(null, response);
-      });
+  makeCall(call, caller, function(error, response) {
+    if (error) { 
+      console.log('Error in call: ', error);
+      if (typeof error === 'object') {
+        response = error;
+      } else {
+        response = {
+          status: 'fail',
+          error: {
+            code: 500,
+            message: error
+          }
+        };
+      } 
+    }
+    if (call.hasOwnProperty('id')) {
+      response.id = call.id;
     } 
+    callback(null, response);
   });
-}
+};

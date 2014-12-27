@@ -3,9 +3,11 @@ Mock One Platform
 
 This is an HTTP server for testing applications built against [Exosite's](https://exosite.com) One Platform. It supports a subset of RPC API commands, including:
 
-- [info](https://docs.exosite.com/rpc#info)
-- [listing](https://docs.exosite.com/rpc#listing)
-- [lookup](https://docs.exosite.com/rpc#lookup)
+- [info](https://docs.exosite.com/rpc#info) (supports: "description", "basic", "key", "aliases", "subscribers", "shares", "tags")
+- [listing](https://docs.exosite.com/rpc#listing) ("owned" only)
+- [lookup](https://docs.exosite.com/rpc#lookup) ("alias"/"aliased" only) 
+- [create](https://docs.exosite.com/rpc#create-client) (limits are not stored but not enforced)
+- [drop](https://docs.exosite.com/rpc#drop)
 
 Compared with testing against One Platform, onep-mock allows tests to run faster because it uses an in-memory database and can run locally with your app. It also provide richer feedback about app misbehavior and allows for working offline.
 

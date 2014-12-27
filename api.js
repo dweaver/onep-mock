@@ -15,14 +15,26 @@ function logobj(obj) {
 }
 
 exports.rpc = function (req, res) {
-  var local_responses = [];
-  var onep_calls = [];
+  var localResponses = [];
+  var overallError = null;
   
+  function collectResponse(err, response) {
+    if (err) { 
+      console.log(err); 
+      overallError = {
+        "error": {
+          "code": 500,
+          "message": err,
+          "context": "call"
+        }
+      };
+      return;
+    }
+    localResponses.push(response);
+  }
   // authenticate
   localrpc.authenticate(req.body.auth, function(err, caller) {
     if (caller === null) {
-      // TODO: return overall error
-      console.log('res.json');
       res.json({"error": 
         {
           "code": 401,
@@ -33,25 +45,9 @@ exports.rpc = function (req, res) {
     } else {
       for (var i = 0; i < req.body.calls.length; i++) {
         var call = req.body.calls[i];
-        localrpc.call(call, caller, function(err, response) {
-          if (err) { 
-            console.log(err); 
-            res.json({"error": 
-              {
-                "code": 500,
-                "message": err,
-                "context": "call"
-              }
-            });
-            return;
-          }
-          local_responses.push(response);
-        });
+        localrpc.call(call, caller, collectResponse);
       }
-      res.json(local_responses);
+      res.json(overallError === null ? localResponses : overallError);
     }
   });
-  
 };
-
-

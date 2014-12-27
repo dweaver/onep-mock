@@ -1,7 +1,7 @@
 /* 
  * In memory storage for One Platform data.
  */
-'use strict';
+"use strict";
 var _ = require('underscore');
 
 var MockDb = function() {
@@ -103,7 +103,7 @@ var MockDb = function() {
         } // child 
       ]
     } 
-  }
+  };
 };
 
 /**
@@ -119,11 +119,11 @@ function treeFind(resource, fn) {
     if (_.has(resource.info, 'children')) {
       for (var i = 0; i < resource.info.children.length; i++) {
           var childResource = resource.info.children[i];
-          var r = treeFind(childResource, fn)
+          var r = treeFind(childResource, fn);
           if (r) {
             return r; 
           }
-      };
+      }
     }
   }
 }
@@ -135,12 +135,12 @@ function treeFind(resource, fn) {
 MockDb.prototype.findResource = function(fn, callback) {
   var r = treeFind(this.infotree, fn);
   callback(null, r);
-}
+};
 
 MockDb.prototype.findResourceInResource = function(resource, fn, callback) {
   var r = treeFind(resource, fn);
   callback(null, r);
-}
+};
 
 MockDb.prototype.findResourceByAuth = function(auth, callback) {
   var mock = this;
@@ -161,18 +161,31 @@ MockDb.prototype.findResourceByAuth = function(auth, callback) {
       callback(null, r);
     }
   });
-}
+};
 
 MockDb.prototype.findResourceByRID = function(rid, callback) {
   this.findResource(function(r) {
     return r.rid === rid; 
   }, callback);
-}
+};
 
 MockDb.prototype.findResourceByRIDInResource = function(resource, rid, callback) {
-  console.log('findResourceByRIDInResource ' + rid);
   this.findResourceInResource(resource, function(r) {
     return r.rid === rid; 
   }, callback);
-}
+};
+
+/**
+ * Remove one of the resource's children and all its descendants.
+ */
+MockDb.prototype.dropResource = function(resource, rid, callback) {
+  var resourceToDrop = _.find(resource.info.children, function(r) { return r.rid === rid; });
+  if (resourceToDrop) {
+    resource.info.children.splice(resource.info.children.indexOf(resourceToDrop), 1);
+    callback(null, { status: 'ok' });
+  } else {
+    callback('Resource ' + rid + ' not found');
+  }
+};
+
 exports.Db = MockDb;

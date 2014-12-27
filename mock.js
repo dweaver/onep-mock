@@ -1,9 +1,8 @@
-// Mock One Platform server, for testing
-//
-// Supports a subset of one platform commands:
-// - create (type: client only)
-// - info (basic, description, and key only)
-// - drop
+/**
+ * Mock One Platform server, for testing
+ *
+ * Supports a subset of one platform commands. See README.md for details.
+ */
 'use strict';
 
 /**

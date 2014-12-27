@@ -1,7 +1,9 @@
 Mock One Platform
 -----------------
 
-This is an HTTP server for testing applications built against [Exosite's](https://exosite.com) One Platform. It supports a subset of RPC API commands:
+[![NPM](https://nodei.co/npm/onep-mock.png)](https://nodei.co/npm/mock-onep/) 
+
+This is a HTTP server for testing applications built against [Exosite's](https://exosite.com) One Platform. It supports a subset of RPC API commands:
 
 - [info](https://docs.exosite.com/rpc#info) ("description", "basic", "key", "aliases", "subscribers", "shares", "tags")
 - [listing](https://docs.exosite.com/rpc#listing) ("owned")
@@ -69,4 +71,9 @@ $ mocha
   1 passing (8ms)
 ```
 
+You can get a coverage report:
 
+```
+$ istanbul cover _mocha -- -R spec
+...
+```

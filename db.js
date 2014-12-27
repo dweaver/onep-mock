@@ -10,7 +10,7 @@ var MockDb = function() {
     info: {
       "basic": {
         "subscribers": 0,
-        "modified": 1310207844,
+        "modified": 1234567890,
         "type": "client",
         "status": "activated"
       },
@@ -20,7 +20,7 @@ var MockDb = function() {
         "limits": { 
           "sms_bucket": "infinite", "http_bucket": "infinite", "email": "infinite", "disk": "infinite", "datarule": "infinite",
           "xmpp_bucket": "infinite", "xmpp": "infinite", "sms": "infinite", "http": "infinite", "dataport": "infinite", 
-          "share": "infinite", "dispatch": "infinite", "email_bucket": "infinite", "client": "infinite"
+          "share": "infinite", "dispatch": "infinite", "email_bucket": "infinite", "client": "infinite", "io": "infinite"
         },
         "name": "Mock Master Client",
         "locked": false,

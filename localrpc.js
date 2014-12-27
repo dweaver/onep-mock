@@ -235,7 +235,14 @@ function makeCall(call, resource, callback) {
               result: resource.rid
             });
           } else {
-            callback('lookup alias only supports self');
+            rid = getRidForArg({alias: id}, resource);
+            if (!rid) {
+              return callback('Alias lookup failed for ' + JSON.stringify(id));
+            }
+            callback(null, {
+              status: 'ok',
+              result: rid
+            });
           }
           break;
         default:

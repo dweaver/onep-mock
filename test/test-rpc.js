@@ -32,14 +32,50 @@ function makeR(auth, calls) {
 }
 function makeR1(auth, procedure, args) { return makeR(auth, [[procedure, args]]); }
 
+/**
+ * Convenience function for making RPC requests that are
+ * expected to succeed.
+ */
+function rpc(auth, calls, callback) {
+  var r = makeR(auth, calls);
+  localrpc.request(r, ok(r, callback));
+}
+
 describe('info', function() {
   describe('root', function() {
-    it('should have infinite client limit', function(done){
-      var r = makeR1(ROOT, 'info', [{'alias': ''}, {}]);
-      localrpc.request(r, ok(r, function(err, results) {
-        assert.equal(results[0].description.limits.client, 'infinite', 'limit is infinite');
+    it('should return only keys we ask for', function(done) {
+      rpc(ROOT, 
+        [['info', [{alias: ''}, {description: true, subscribers: true}]]], 
+        function(err, results) {
+          var keys = _.keys(results[0]).sort();
+          assert(
+            _.isEqual(keys, ['description', 'subscribers']),
+            JSON.stringify(_.keys(results[0]).sort()) + ' contains "description" and "subscribers"');
+          done();
+      });
+    });
+    it('should have infinite limit for each resource', function(done) {
+      rpc(ROOT, 
+        [['info', [{alias: ''}, {description: true}]]], 
+        function(err, results) {
+          assert(_.isEqual(results[0].description.limits, {
+            "sms": "infinite",
+            "http": "infinite",
+            "dataport": "infinite",
+            "share": "infinite",
+            "dispatch": "infinite",
+            "email_bucket": "infinite",
+            "client": "infinite",
+            "xmpp": "infinite",
+            "xmpp_bucket": "infinite",
+            "datarule": "infinite",
+            "disk": "infinite",
+            "email": "infinite",
+            "http_bucket": "infinite",
+            "sms_bucket": "infinite" 
+        }), 'should have infinite limits: ' + JSON.stringify(results[0].description.limits, null, 2));
         done();
-      })); 
+      }); 
     });
   });
 });

@@ -334,10 +334,22 @@ function call(call, caller, callback) {
     } 
     callback(null, response);
   });
-};
+}
+
+/**
+ * Callback for responding to a request
+ *
+ * @callback requestCallback
+ * @param {string} err - error message for individual call failure
+ * @param {object} response - RPC response body object
+ */
 
 /**
  * Make an RPC request.
+ *
+ * @param {object} body - request body
+ * @param {requestCallback} callback
+ *
  */
 exports.request = function(body, callback) {
   var localResponses = [];

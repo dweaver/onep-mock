@@ -20,7 +20,7 @@ var MockDb = function() {
         "limits": { 
           "sms_bucket": "infinite", "http_bucket": "infinite", "email": "infinite", "disk": "infinite", "datarule": "infinite",
           "xmpp_bucket": "infinite", "xmpp": "infinite", "sms": "infinite", "http": "infinite", "dataport": "infinite", 
-          "share": "infinite", "dispatch": "infinite", "email_bucket": "infinite", "client": "infinite", "io": "infinite"
+          "share": "infinite", "dispatch": "infinite", "email_bucket": "infinite", "client": "infinite"
         },
         "name": "Mock Master Client",
         "locked": false,

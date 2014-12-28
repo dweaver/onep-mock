@@ -227,3 +227,23 @@ describe('create / drop', function() {
   });
 });
 
+describe('map', function() {
+  it('should map an alias', function(done) {
+    var alias = 'first_generation';
+    rpc(ROOT,
+      [['map', ['alias', '1234567890123456789012345678901234567890', alias]]], 
+      function(err, results) {
+        rpc(ROOT,
+          [['info', [{'alias': alias}, {key: true}]],
+           ['lookup', ['alias', alias]],
+           ['info', [{alias: ''}, {aliases: true}]]],
+          function(err, results) {
+            assert(_.isEqual(results[0], {key: '2222222222222222222222222222222222222222'}),
+              'key should be 2s: ' + JSON.stringify(results[0]));
+            assert.equal(results[1], '1234567890123456789012345678901234567890');
+            assert(_.contains(results[2].aliases['1234567890123456789012345678901234567890'], alias));
+            done();
+          });
+        }); 
+    });
+});

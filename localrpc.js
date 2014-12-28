@@ -7,6 +7,8 @@ var _ = require('underscore');
 var db = require('./db');
 var Db = new db.Db();
 
+var RIDRE = /[a-fA-F0-9]{40}/;
+
 function authenticate(auth, callback) {
   Db.findResourceByAuth(auth, callback);
 }
@@ -310,6 +312,35 @@ function makeCall(call, resource, callback) {
       });
       break;
 
+    case 'map':
+      if (call.arguments[0] !== 'alias') {
+        return callback('first argument to map must be "alias"');
+      }
+      rid = call.arguments[1];
+      var alias = call.arguments[2];
+
+      if (!rid.match(RIDRE)) {
+        return callback('second argument to map doesn\'t look like an RID. Instead it\'s: ' + call.arguments[1]);
+      }
+
+      Db.findResourceByRIDInResource(resource, rid, function(error, targetResource) {
+        if (error) { return callback(error); }
+        if (!targetResource) {
+          return callback('Failed to find resource ' + rid + ' in ' + resource.rid);
+        }
+        var aliases = resource.info.aliases;
+        if (_.has(aliases, rid)) {
+          if (!_.contains(aliases[rid], alias)) {
+            aliases[rid].push(alias);
+          }
+        } else {
+          aliases[rid] = [alias];
+        }
+        callback(null, { status: 'ok' }); 
+      });
+      
+      break;
+      
     default:
       throw 'Mock server does not support procedure ' + call.procedure;
   }  

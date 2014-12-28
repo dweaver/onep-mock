@@ -45,6 +45,48 @@ function rpc(auth, calls, callback) {
   localrpc.request(r, ok(r, callback));
 }
 
+describe('listing', function() {
+  it('should return rid of one client below root', function(done) {
+    rpc(ROOT,
+      [['listing', [['client', 'dataport', 'datarule', 'dispatch'], {owned: true}]]],
+      function(err, results) {
+        assert(_.isEqual(results[0], {
+          client: ['1234567890123456789012345678901234567890'],
+          dataport: [],
+          datarule: [],
+          dispatch: []
+        }), 'listing matches');
+        done();
+      });
+  });
+  it('should only return requested types', function(done) {
+    rpc(ROOT,
+      [['listing', [['dispatch'], {owned: true}]]],
+      function(err, results) {
+        assert(_.isEqual(results[0], {
+          dispatch: []
+        }), 'listing matches');
+        done();
+      });
+  });
+  it('should fail for unknown type', function(done) {
+    var r = makeR(ROOT, [['listing', [['function'], {owned: true}]]]);
+    localrpc.request(r, function(err, response) {
+        assert(!err, 'no general error');
+        assert.notEqual(response[0].status, 'ok', 'status should not be ok:' + JSON.stringify(response[0]));
+        done();
+      });
+  });
+  it('should fail for unsupported option', function(done) {
+    var r = makeR(ROOT, [['listing', [['dataport'], {owned: true, aliased: true}]]]);
+    localrpc.request(r, function(err, response) {
+        assert(!err, 'no general error');
+        assert.notEqual(response[0].status, 'ok', 'status should not be ok:' + JSON.stringify(response[0]));
+        done();
+      });
+  });
+});
+
 describe('lookup', function() {
   it('should return the RID for root', function(done) {
     rpc(ROOT,
@@ -119,3 +161,69 @@ describe('info', function() {
     }); 
   });
 });
+
+describe('create / drop', function() {
+  var clientRid = null;
+  it('should create a client', function(done) {
+    var desc = {            
+      "limits": {
+        "client":       "inherit",
+        "dataport":     "inherit",
+        "datarule":     "inherit",
+        "disk":         "inherit",
+        "dispatch":     "inherit",
+        "email":        "inherit",
+        "email_bucket": "inherit",
+        "http":         "inherit",
+        "http_bucket":  "inherit",
+        "share":        "inherit",
+        "sms":          0,
+        "sms_bucket":   0,
+        "xmpp":         "inherit",
+        "xmpp_bucket":  "inherit"
+      },
+      "locked": false,
+      "meta": "hullo",
+      "name": "",
+      "public": false
+    };
+    rpc(ROOT,
+      [['create', ['client', desc]]],
+      function(err, results) {
+        clientRid = results[0];
+        assert(clientRid.match(/[a-fA-F0-9]{40}/), 'returns what looks like an RID');
+        rpc(ROOT,
+          [['info', [clientRid, {description: true, basic: true}]],
+           ['listing', [['client'], {}]]],
+          function(err, results) {
+            assert(_.isEqual(results[0].description, desc));
+            var basic = results[0].basic;
+            assert(_.matches(basic, {
+              type: 'client',
+              status: 'activated',
+              subscribers: 0
+            }));
+            assert.equal(typeof basic.modified, 'number');
+             
+            assert(_.contains(results[1].client, clientRid), 'created client is in listing');
+
+            done();
+          });
+      });
+  });
+  it('should drop created client', function(done) {
+    rpc(ROOT,
+      [['drop', [clientRid]]],
+      function(err, results) {
+        rpc(ROOT,
+          [['listing', [['client'], {}]]],
+          function(err, results) {
+            assert(_.isEqual(results[0], {
+              client: ['1234567890123456789012345678901234567890']
+            }), 'dropped client is not listed');
+            done();
+          });
+      });
+  });
+});
+

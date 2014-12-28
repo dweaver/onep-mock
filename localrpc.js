@@ -200,9 +200,20 @@ function makeCall(call, resource, callback) {
         }
       });
       break;
+
     case 'listing':
-      var type_list = call.arguments[0];
-      // ignored for now
+      var typeList = call.arguments[0];
+      var supportedTypes = ['client', 'dataport', 'datarule', 'dispatch'];
+      var unsupportedTypes = _.filter(typeList, function(t) {
+        return !_.contains(supportedTypes, t); 
+      });
+      if (unsupportedTypes.length > 0) {
+        // invalid
+        return callback('listing does not support types ' + 
+          JSON.stringify(unsupportedTypes) + '. Only these: ' + 
+          JSON.stringify(supportedTypes));
+      }
+
       options = call.arguments[1];
       if (!(_.keys(options).length === 0 ||
           (_.keys(options).length === 1 && 
@@ -211,7 +222,7 @@ function makeCall(call, resource, callback) {
       }
       var result = {};
       if (_.has(resource.info, 'children')) {
-        _.each(type_list, function(typ) {
+        _.each(typeList, function(typ) {
           result[typ] = _.pluck(
             _.filter(resource.info.children, function(r) { return r.info.basic.type === typ; }),
             'rid');
@@ -323,7 +334,6 @@ function call(call, caller, callback) {
   var response = null;
   makeCall(call, caller, function(error, response) {
     if (error) { 
-      console.log('Error in call: ', error);
       if (typeof error === 'object') {
         response = error;
       } else {

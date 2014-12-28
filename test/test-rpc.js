@@ -45,6 +45,15 @@ function rpc(auth, calls, callback) {
   localrpc.request(r, ok(r, callback));
 }
 
+/**
+ * Convenience function for making RPC requests that may
+ * or may not succeed. 
+ */
+function rpcraw(auth, calls, callback) {
+  var r = makeR(auth, calls);
+  localrpc.request(r, callback);
+}
+
 describe('listing', function() {
   it('should return rid of one client below root', function(done) {
     rpc(ROOT,
@@ -70,12 +79,13 @@ describe('listing', function() {
       });
   });
   it('should fail for unknown type', function(done) {
-    var r = makeR(ROOT, [['listing', [['function'], {owned: true}]]]);
-    localrpc.request(r, function(err, response) {
+    rpcraw(ROOT, 
+      [['listing', [['function'], {owned: true}]]], 
+      function(err, response) {
         assert(!err, 'no general error');
         assert.notEqual(response[0].status, 'ok', 'status should not be ok:' + JSON.stringify(response[0]));
         done();
-      });
+    });
   });
   it('should fail for unsupported option', function(done) {
     var r = makeR(ROOT, [['listing', [['dataport'], {owned: true, aliased: true}]]]);
@@ -227,9 +237,9 @@ describe('create / drop', function() {
   });
 });
 
-describe('map', function() {
+describe('map / unmap', function() {
+  var alias = 'test_alias';
   it('should map an alias', function(done) {
-    var alias = 'first_generation';
     rpc(ROOT,
       [['map', ['alias', '1234567890123456789012345678901234567890', alias]]], 
       function(err, results) {
@@ -242,6 +252,34 @@ describe('map', function() {
               'key should be 2s: ' + JSON.stringify(results[0]));
             assert.equal(results[1], '1234567890123456789012345678901234567890');
             assert(_.contains(results[2].aliases['1234567890123456789012345678901234567890'], alias));
+            done();
+          });
+        }); 
+    });
+  it('should not map an existing alias', function(done) {
+    rpcraw(ROOT,
+      [['map', ['alias', '1234567890123456789012345678901234567890', alias]]], 
+      function(err, response) {
+        assert.equal(response[0].status, 'invalid');
+        done();
+    });
+  });
+  it('should unmap an alias', function(done) {
+    rpc(ROOT,
+      [['unmap', ['alias', alias]]], 
+      function(err, results) {
+        rpcraw(ROOT,
+          [['info', [{'alias': alias}, {key: true}]],
+           ['lookup', ['alias', alias]],
+           ['info', [{alias: ''}, {aliases: true}]]],
+          function(err, response) {
+            assert.equal(response[0].status, 'invalid');
+            assert.equal(response[1].status, 'invalid');
+            assert.equal(response[2].status, 'ok');
+            assert(_.isEqual(
+              response[2].result, 
+              {aliases: {'1234567890123456789012345678901234567890': ["mock_other"]}}),
+              'previous alias should still be there: ' + JSON.stringify(response[2].result));
             done();
           });
         }); 

@@ -9,6 +9,10 @@ var Db = new db.Db();
 
 var RIDRE = /[a-fA-F0-9]{40}/;
 
+// set STRICT to true to look more exactly like 1P 
+// (e.g. not include messages in errors)
+var STRICT = false;
+
 function authenticate(auth, callback) {
   Db.findResourceByAuth(auth, callback);
 }
@@ -28,7 +32,7 @@ function makeid() {
 }
 
 /**
- * Look up argument
+ * Look up argument. Returns RID string or error object.
  */
 function getRidForArg(arg, resource) {
   if (typeof arg === 'string') {
@@ -49,6 +53,15 @@ function getRidForArg(arg, resource) {
       }
     }
   } 
+  var err = {
+    status: 'invalid'
+  };
+  if (!STRICT) {
+    err.error = {
+      message: 'Alias lookup failed for ' + JSON.stringify(arg)
+    };
+  }
+  return err;
 }
 
 /** 
@@ -170,13 +183,14 @@ function makeCall(call, resource, callback) {
   }
   var options = null;
   var rid = null;
+  var alias = null;
   // make a call on behalf of resource,
   // and call callback.
   switch (call.procedure) {
     case 'info':  
       rid = getRidForArg(call.arguments[0], resource);
-      if (!rid) {
-        return callback('Alias lookup failed for ' + JSON.stringify(call.arguments[0]));
+      if (typeof rid !== 'string') {
+        return callback(rid);
       }
       options = call.arguments[1];
       var supported_attrs = ['description', 'basic', 'key', 'aliases', 'subscribers', 'shares', 'tags'];
@@ -249,8 +263,8 @@ function makeCall(call, resource, callback) {
             });
           } else {
             rid = getRidForArg({alias: id}, resource);
-            if (!rid) {
-              return callback('Alias lookup failed for ' + JSON.stringify(id));
+            if (typeof rid !== 'string') {
+              return callback(rid);
             }
             callback(null, {
               status: 'ok',
@@ -303,8 +317,8 @@ function makeCall(call, resource, callback) {
 
     case 'drop':
       rid = getRidForArg(call.arguments[0], resource);
-      if (!rid) {
-        return callback('Alias lookup failed for ' + JSON.stringify(call.arguments[0]));
+      if (typeof rid !== 'string') {
+        return callback(rid);
       }
       Db.dropResource(resource, rid, function(err) {
         if (err) { return callback(err); }
@@ -317,16 +331,22 @@ function makeCall(call, resource, callback) {
         return callback('first argument to map must be "alias"');
       }
       rid = call.arguments[1];
-      var alias = call.arguments[2];
+      alias = call.arguments[2];
 
       if (!rid.match(RIDRE)) {
         return callback('second argument to map doesn\'t look like an RID. Instead it\'s: ' + call.arguments[1]);
       }
 
+      // alias should not already be mapped in this resource
+      var alreadyMappedRid = getRidForArg({alias: alias}, resource);
+      if (typeof alreadyMappedRid === 'string') {
+        return callback({status: 'invalid'});
+      }
+
       Db.findResourceByRIDInResource(resource, rid, function(error, targetResource) {
         if (error) { return callback(error); }
         if (!targetResource) {
-          return callback('Failed to find resource ' + rid + ' in ' + resource.rid);
+          return callback(null, {status: 'invalid'});
         }
         var aliases = resource.info.aliases;
         if (_.has(aliases, rid)) {
@@ -340,7 +360,23 @@ function makeCall(call, resource, callback) {
       });
       
       break;
-      
+
+    case 'unmap':
+      if (call.arguments[0] !== 'alias') {
+        return callback('first argument to unmap must be "alias"');
+      }
+      alias = call.arguments[1];
+      var aliases = resource.info.aliases;
+      _.each(aliases, function(aliasList, rid) {
+        var idx = aliasList.indexOf(alias);
+        if (idx !== -1) {
+          // remove the alias
+          aliasList.splice(idx, 1); 
+        }
+      });
+      // Note: 1P returns OK status if alias doesn't exist
+      callback(null, { status: 'ok' });
+      break; 
     default:
       throw 'Mock server does not support procedure ' + call.procedure;
   }  

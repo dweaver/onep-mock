@@ -32,6 +32,13 @@ function makeid() {
 }
 
 /**
+ * Get the servers current timestamp (seconds since epoch)
+ */
+function getServerTimestamp() {
+  return Math.round(new Date().getTime() / 1000);
+}
+
+/**
  * Look up argument. Returns RID string or error object.
  */
 function getRidForArg(arg, resource) {
@@ -184,9 +191,11 @@ function makeCall(call, resource, callback) {
   var options = null;
   var rid = null;
   var alias = null;
+  var now = null;
   // make a call on behalf of resource,
   // and call callback.
   switch (call.procedure) {
+
     case 'info':  
       rid = getRidForArg(call.arguments[0], resource);
       if (typeof rid !== 'string') {
@@ -377,6 +386,46 @@ function makeCall(call, resource, callback) {
       // Note: 1P returns OK status if alias doesn't exist
       callback(null, { status: 'ok' });
       break; 
+
+    case 'write':
+      rid = getRidForArg(call.arguments[0], resource);
+      if (typeof rid !== 'string') {
+        return callback(rid);
+      }
+      var value = call.arguments[1];
+      now = getServerTimestamp();
+      Db.record(rid, [[now, value]], function(err) {
+        if (err) { return callback(err); }
+        return callback(null, {status: 'ok'});
+      });
+      break;
+
+    case 'read':
+      rid = getRidForArg(call.arguments[0], resource);
+      if (typeof rid !== 'string') {
+        return callback(rid);
+      }
+      now = getServerTimestamp();
+      options = _.defaults(call.arguments[1], {
+        starttime: 0,
+        endtime: now,
+        sort: 'desc',
+        limit: 1,
+        selection: 'all'
+      });
+      if (options.selection !== 'all') {
+        return callback('"' + options.selection + '" is not supported by the mock server for the read command, only "all"');
+      }
+      Db.read(rid, options, function(err, points) {
+        if (err) { return callback(err); }
+        return callback(null, {
+          status: 'ok',
+          result: points
+        });
+      });
+      
+      break; 
+
     default:
       throw 'Mock server does not support procedure ' + call.procedure;
   }  

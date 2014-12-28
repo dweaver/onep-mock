@@ -285,3 +285,63 @@ describe('map / unmap', function() {
         }); 
     });
 });
+
+function testCalls(cik, tests, callback) {
+  var r = makeR(cik, _.pluck(tests, 'call'));
+  localrpc.request(r, function(err, response) {
+    assert.equal(err, null);
+    assert.equal(response.length, tests.length, 'correct number of responses');
+    _.each(tests, function(test, i) {
+      if (_.has(test, 'response')) {
+        assert(_.matches(response[i], test.response), 
+          'response matches: ' + JSON.stringify(response[i]));
+      } else if (_.has(test, 'result')) {
+        assert.equal(response[i].status, 'ok', 
+          'call succeeded: ' + JSON.stringify(response[i]));
+        assert(_.isEqual(response[i].result, test.result),
+          '\nresult:   ' + JSON.stringify(response[i].result) + '\nexpected: ' + JSON.stringify(test.result));
+      } else {
+        callback('test should have "response" or "result": ' + JSON.stringify(test));
+      }
+    });
+    callback(null);
+  });
+}
+  
+
+describe('read', function() {
+  var pts = [
+    [1419791112, 12],
+    [1419791212, 23],
+    [1419791312, 34],
+  ];
+  var cik = '2222222222222222222222222222222222222222';
+  var rid = '2345678901234567890123456789012345678901'; 
+
+  it('should read with various options', function(done) {
+    testCalls(cik,
+      [{call: ['read', [rid, {}]], 
+        result: [[1419791312, 34]]},
+       {call: ['read', [rid, {limit: 2, sort: 'asc'}]],
+        result: [[1419791112, 12], [1419791212, 23]]},
+       {call: ['read', [rid, {limit: 4}]],
+        result: [[1419791312, 34], [1419791212, 23], [1419791112, 12]]},
+       {call: ['read', [rid, {starttime: 1419791112, endtime: 1419791212, limit: 100}]],
+        result: [[1419791212, 23], [1419791112, 12]]},
+       {call: ['read', [rid, {starttime: 1419791112, endtime: 1419791312, limit: 4}]],
+        result: [[1419791312, 34], [1419791212, 23], [1419791112, 12]]},
+       {call: ['read', [rid, {starttime: 1419790000, endtime: 1419791000}]],
+        result: []},
+       {call: ['read', [rid + '1', {}]],
+        response: {status: 'invalid'}}
+      ], 
+      function(err) { 
+        assert(!err);
+        done(); 
+      });
+  });
+});
+
+/* describe('write', function() {
+  // TODO
+}); */

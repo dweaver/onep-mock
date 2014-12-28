@@ -5,6 +5,14 @@
 var _ = require('underscore');
 
 var MockDb = function() {
+  this.series = {
+    // these must always be sorted in ascending order
+    '2345678901234567890123456789012345678901': [
+      [1419791112, 12],
+      [1419791212, 23],
+      [1419791312, 34],
+    ]
+  };
   this.infotree = {
     rid: '0123456789012345678901234567890123456789',
     info: {
@@ -186,6 +194,60 @@ MockDb.prototype.dropResource = function(resource, rid, callback) {
   } else {
     callback('Resource ' + rid + ' not found');
   }
+};
+
+/**
+ * Record time series points. Assumes rid and points have
+ * been validated as existing, writable, and in the correct format.
+ */
+MockDb.prototype.record = function(rid, points, callback) {
+  if (!_.has(this.series, rid)) {
+    return callback(rid + ' not found in series.');
+  }
+  var series = this.series[rid];
+  _.each(points, function(point, i) {
+    var pt = _.find(series, function(p) { return p[0] === point[0]; });
+    if (pt) {
+      // update existing point
+      pt[1] = point[1];
+    } else {
+      // insert new point
+      var idx = _.sortedIndex(series, point, function(p) { return p[0]; });
+      series.splice(idx, 0, point);
+    }
+  });
+};
+
+MockDb.prototype.read = function(rid, options, callback) {
+  /* options are: 
+  {
+    starttime: 0,
+    endtime: now,
+    sort: 'desc',
+    limit: 1,
+    selection: 'all'
+  } */
+  if (!_.has(this.series, rid)) {
+    return callback(rid + ' not found in series.');
+  }
+  var series = this.series[rid];
+
+  // filter to points inside the time window starttime - endtime
+  var wind = [];
+  for (var i = 0; i < series.length; i++) {
+    if (series[i][0] > options.endtime) { break; }
+    if (series[i][0] >= options.starttime) { wind.push(series[i]); }
+  }
+
+  // sort points
+  if (options.sort === 'desc') {
+    wind.reverse();
+  }
+
+  // limit point count
+  var limited = wind.slice(0, options.limit);
+  
+  callback(null, limited);
 };
 
 exports.Db = MockDb;

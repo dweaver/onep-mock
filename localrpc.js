@@ -213,14 +213,22 @@ function makeCall(call, resource, callback) {
         callback('info does not support any of ' + JSON.stringify(unsupported) + '. Only these: ' + JSON.stringify(supported_attrs));
       }
       
-      Db.findResourceByRIDInResource(resource, rid, function(error, target_resource) {
+      Db.findResourceByRIDInResource(resource, rid, function(error, targetResource) {
         if (error) { return callback(error); }
-        if (!target_resource) {
-          callback('Failed to find resource ' + rid + ' in ' + resource.rid);
+        if (!targetResource) {
+          var err = {
+            status: 'restricted'
+          };
+          if (!STRICT) {
+            err.error = {
+              message: 'Failed to find resource ' + rid + ' in ' + resource.rid
+            };
+          }
+          callback(err);
         } else {
           callback(null, {
             status: 'ok',
-            result: filterInfo(target_resource.info, options)
+            result: filterInfo(targetResource.info, options)
           });
         }
       });

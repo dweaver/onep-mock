@@ -290,25 +290,26 @@ describe('map / unmap', function() {
 });
 
 function testCalls(cik, tests, callback) {
-  var r = makeR(cik, _.pluck(tests, 'call'));
-  localrpc.request(r, function(err, response) {
-    assert.equal(err, null);
-    assert.equal(response.length, tests.length, 'correct number of responses');
-    _.each(tests, function(test, i) {
+  _.each(tests, function(test, i) {
+    var r = makeR(cik, [test.call]);
+    localrpc.request(r, function(err, response) {
+      assert.equal(err, null);
+      var message = _.has(test, 'message') ? test.message : 'testCalls() ' + i;
       if (_.has(test, 'response')) {
         assert(_.matches(response[i], test.response), 
-          'response matches: ' + JSON.stringify(response[i]));
+          message + 'response matches: ' + JSON.stringify(response[0]));
       } else if (_.has(test, 'result')) {
-        assert.equal(response[i].status, 'ok', 
-          'call succeeded: ' + JSON.stringify(response[i]));
-        assert(_.isEqual(response[i].result, test.result),
-          '\nresult:   ' + JSON.stringify(response[i].result) + '\nexpected: ' + JSON.stringify(test.result));
+        assert.equal(response[0].status, 'ok', 
+          message + 'call succeeded: ' + JSON.stringify(response[0]));
+        assert(_.isEqual(response[0].result, test.result),
+          message + '\nresult:   ' + JSON.stringify(response[0].result) + '\nexpected: ' + JSON.stringify(test.result));
       } else {
-        callback('test should have "response" or "result": ' + JSON.stringify(test));
+        assert.equal(response[0].status, 'ok', 
+          message + 'call succeeded: ' + JSON.stringify(response[0]));
       }
     });
-    callback(null);
   });
+  callback(null);
 }
   
 
@@ -411,4 +412,31 @@ describe('record', function() {
           });  
       });
   }); 
+});
+
+describe('flush', function() {
+  var rid = '2345678901234567890123456789012345678901'; 
+  var points = [[2, 99], [1, 88]];
+  it('should flush things', function(done) {
+    testCalls(ROOT,
+      [{call: ['record', [rid, points, {}]]},
+       {call: ['read', [rid, {starttime: 1, endtime: 2, limit: 2}]], 
+        result: points},
+       {call: ['flush', [rid, {}]]},
+       {call: ['read', [rid, {starttime: 1, endtime: 2, limit: 2}]],
+        result: []},
+       {call: ['record', [rid, points, {}]]},
+       {call: ['flush', [rid, {newerthan:1}]]},
+       {call: ['read', [rid, {starttime: 1, endtime: 2, limit: 2}]],
+        result: [points[1]]},
+       {call: ['record', [rid, points, {}]]},
+       {call: ['flush', [rid, {olderthan:2}]]},
+       {call: ['read', [rid, {starttime: 1, endtime: 2, limit: 2}]],
+        result: [points[0]]}
+      ], 
+      function(err) { 
+        assert(!err);
+        done(); 
+      });
+  });
 });

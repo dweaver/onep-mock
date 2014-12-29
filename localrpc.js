@@ -455,6 +455,21 @@ function makeCall(call, resource, callback) {
       
       break; 
 
+    case 'flush':
+      rid = getRidForArg(call.arguments[0], resource);
+      if (typeof rid !== 'string') {
+        return callback(rid);
+      }
+      options = call.arguments[1];
+
+      Db.flush(rid, options, function(err) {
+        if (err) { return callback(err); }
+        return callback(null, {
+          status: 'ok'
+        });
+      });
+      break;
+
     default:
       throw 'Mock server does not support procedure ' + call.procedure;
   }  

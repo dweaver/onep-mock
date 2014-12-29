@@ -251,4 +251,28 @@ MockDb.prototype.read = function(rid, options, callback) {
   callback(null, limited);
 };
 
+/**
+ * Flush (delete) time series points. Assumes rid has
+ * been validated as existing and writable.
+ */
+MockDb.prototype.flush = function(rid, options, callback) {
+  if (!_.has(this.series, rid)) {
+    return callback(rid + ' not found in series.');
+  }
+  this.series[rid] = _.reject(this.series[rid], function(p) {
+    if (_.has(options, 'newerthan') && p[0] <= options.newerthan &&
+        _.has(options, 'olderthan') && p[0] >= options.olderthan) {
+      return false;
+    }
+    if (_.has(options, 'newerthan') && p[0] <= options.newerthan) {
+      return false;
+    }
+    if (_.has(options, 'olderthan') && p[0] >= options.olderthan) {
+      return false;
+    }
+    return true;
+  });
+  callback(null);
+};
+
 exports.Db = MockDb;

@@ -3,7 +3,7 @@ Mock One Platform
 
 [![NPM](https://nodei.co/npm/onep-mock.png)](https://nodei.co/npm/mock-onep/) 
 
-This is a HTTP server for testing applications built against [Exosite's](https://exosite.com) One Platform. It supports a subset of RPC API commands:
+This is a HTTP server for testing applications built against [Exosite's](https://exosite.com) One Platform. At the moment it supports just a subset of RPC API commands:
 
 - [info](https://docs.exosite.com/rpc#info) ("description", "basic", "key", "aliases", "subscribers", "shares", "tags")
 - [listing](https://docs.exosite.com/rpc#listing) ("owned")
@@ -15,6 +15,7 @@ This is a HTTP server for testing applications built against [Exosite's](https:/
 - [read](https://docs.exosite.com/rpc#read) ("selection": "all")
 - [write](https://docs.exosite.com/rpc#write)
 - [record](https://docs.exosite.com/rpc#record)
+- [flush](https://docs.exosite.com/rpc#flush)
 
 Compared with testing against One Platform, onep-mock allows tests to run faster because it uses an in-memory database and can run locally with your app. It also provides more feedback about app misbehavior and allows for working offline.
 
@@ -27,10 +28,10 @@ One Platform mock server listening on 3001
 The server's in-memory database starts out with a root CIK of all 1s, with some more debug data underneath it. Once the server is running, you can run some [Exoline](https://github.com/exosite/exoline) commands against it:
 
 ```
-$ exo --http --host=127.0.0.1 --port=3001 tree 1111111111111111111111111111111111111111
-Mock Master Client  client cik: 1111111111111111111111111111111111111111 (aliases: see parent)
-  └─Mock Other Client  client cik: 2222222222222222222222222222222222222222 (aliases: ["mock_other"])
-      └─gas  integer dataport rid: 2345678901234567890123456789012345678901 (aliases: ["mock_gas"])
+$ exo --http --host=127.0.0.1 --port=3001 twee 1111111111111111111111111111111111111111
+Mock Master Client    cl cik: 1111111111111111111111111111111111111111
+  └─Mock Other Client    cl cik: 2222222222222222222222222222222222222222
+      └─gas  dp.i mock_gas: 34 (10 hours ago)
 ```
 
 The server will complain loudly if you try to do something it doesn't support yet, as when trying to call the `usage` command. 

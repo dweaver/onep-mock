@@ -296,8 +296,14 @@ function testCalls(cik, tests, callback) {
       assert.equal(err, null);
       var message = _.has(test, 'message') ? test.message : 'testCalls() ' + i;
       if (_.has(test, 'response')) {
-        assert(_.matches(response[i], test.response), 
-          message + 'response matches: ' + JSON.stringify(response[0]));
+        if (_.isFunction(test.response)) {
+          assert(test.response(response[0]), 
+            message + ' response function with response ' + 
+            JSON.stringify(response[0]));
+        } else {
+          assert(_.matches(response[i], test.response), 
+            message + 'response matches: ' + JSON.stringify(response[0]));
+        }
       } else if (_.has(test, 'result')) {
         assert.equal(response[0].status, 'ok', 
           message + 'call succeeded: ' + JSON.stringify(response[0]));
@@ -433,6 +439,24 @@ describe('flush', function() {
        {call: ['flush', [rid, {olderthan:2}]]},
        {call: ['read', [rid, {starttime: 1, endtime: 2, limit: 2}]],
         result: [points[0]]}
+      ], 
+      function(err) { 
+        assert(!err);
+        done(); 
+      });
+  });
+});
+
+describe('update', function() {
+  var rid = '2345678901234567890123456789012345678901'; 
+  var name = 'test name';
+  it('will rename resource', function(done) {
+    testCalls(ROOT,
+      [{call: ['update', [rid, {name: name}]]},
+       {call: ['info', [rid, {description: true}]],
+        response: function(r) {
+          return r.status === 'ok' && r.result.description.name === name;
+        }}
       ], 
       function(err) { 
         assert(!err);

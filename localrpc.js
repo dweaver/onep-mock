@@ -192,6 +192,7 @@ function makeCall(call, resource, callback) {
   var rid = null;
   var alias = null;
   var now = null;
+  var desc = null;
   // make a call on behalf of resource,
   // and call callback.
   switch (call.procedure) {
@@ -295,9 +296,32 @@ function makeCall(call, resource, callback) {
       }
       break;
 
+    case 'update':
+      // TODO: check for updating self
+      rid = getRidForArg(call.arguments[0], resource);
+      if (typeof rid !== 'string') {
+        return callback(rid);
+      }
+      if (rid === resource.rid) {
+        // resource can't update itself
+        return callback({status: 'restricted'});
+      }
+      desc = call.arguments[1];
+      Db.findResourceByRIDInResource(resource, rid, function(error, targetResource) {
+        if (error) { return callback(error); }
+        if (!targetResource) {
+          return callback(null, {status: 'invalid'});
+        }
+        var aliases = resource.info.aliases;
+        targetResource.info.description = _.extend(targetResource.info.description, desc);
+        callback(null, { status: 'ok' }); 
+      });
+      
+      break;
+
     case 'create':
       var type = call.arguments[0];
-      var desc = call.arguments[1];
+      desc = call.arguments[1];
       desc = validateDescription(desc, type);
       if (typeof desc !== 'object') {
         // here's where the platform gives you the error 'invalid'

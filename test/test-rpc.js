@@ -360,3 +360,55 @@ describe('write', function() {
       });
   }); 
 });
+
+describe('record', function() {
+  var rid = '2345678901234567890123456789012345678901'; 
+  var points = [[23456, 99], [12345, 88]];
+  it('should record a value', function(done) {
+    rpc(ROOT, [['record', [rid, points, {}]]],
+      function(err, results) {
+        assert(!err);
+        rpc(ROOT, 
+          [['read', [rid, {
+            starttime: points[1][0], 
+            endtime: points[0][0], 
+            limit: 2}]]],
+          function(err, results) {
+            assert(!err);
+            assert(_.isEqual(results[0], points),
+              'points returned: ' + JSON.stringify(results[0]));
+            done();
+          });  
+      });
+  }); 
+  it('should not require third argument', function(done) {
+    rpc(ROOT, [['record', [rid, [[1, 44]]]]], function(err, results) { 
+      assert(!err); 
+      done();
+    });
+  });
+  it('should record a negative value', function(done) {
+    var now = Math.round(new Date().getTime() / 1000);
+    var points = [[-5, 99]];
+    // -1 / +1 is a buffer
+    var starttime = now + points[0][0] - 1;
+    var endtime = now + points[0][0] + 1;
+    rpc(ROOT, [['record', [rid, points, {}]]],
+      function(err, results) {
+        assert(!err);
+        rpc(ROOT, 
+          [['read', [rid, {
+            starttime: starttime,
+            endtime: endtime }]]],
+          function(err, results) {
+            assert(!err);
+            assert.equal(results[0][0][1], points[0][1],
+              'wrong value in point returned: ' + JSON.stringify(results[0]) + 
+              ' instead of ' + JSON.stringify(points));
+            assert(starttime <= results[0][0][0] && results[0][0][0] <= endtime,
+              'time in range recorded');
+            done();
+          });  
+      });
+  }); 
+});

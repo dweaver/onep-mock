@@ -400,6 +400,27 @@ function makeCall(call, resource, callback) {
       });
       break;
 
+    case 'record':
+      rid = getRidForArg(call.arguments[0], resource);
+      if (typeof rid !== 'string') {
+        return callback(rid);
+      }
+      var points = call.arguments[1];
+      // third argument seems to be ignored by 1P, so we don't look at it.
+      now = getServerTimestamp();
+      points = _.map(points, function(p) {
+        if (p[0] < 0) {
+          return [now + p[0], p[1]];
+        } else {
+          return p;
+        }
+      });
+      Db.record(rid, points, function(err) {
+        if (err) { return callback(err); }
+        return callback(null, {status: 'ok'});
+      });
+      break;
+
     case 'read':
       rid = getRidForArg(call.arguments[0], resource);
       if (typeof rid !== 'string') {

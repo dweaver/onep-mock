@@ -215,6 +215,7 @@ MockDb.prototype.record = function(rid, points, callback) {
       var idx = _.sortedIndex(series, point, function(p) { return p[0]; });
       series.splice(idx, 0, point);
     }
+    callback(null);
   });
 };
 

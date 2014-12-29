@@ -11,7 +11,10 @@ var ROOT = "1111111111111111111111111111111111111111";
 function ok(request, callback) {
   return function(err, response) {
     assert.equal(err, null);
-    assert.equal(response.length, request.calls.length, 'correct number of responses');
+    assert.equal(response.length, request.calls.length, 
+      'correct number of responses in response ' + 
+      JSON.stringify(response) + 
+      ' for call ' + JSON.stringify(request.calls));
     for (var i = 0; i < response.length; i++) {
       assert.equal(response[i].status, 'ok', 
         'call succeeds:\n' + 
@@ -342,6 +345,18 @@ describe('read', function() {
   });
 });
 
-/* describe('write', function() {
-  // TODO
-}); */
+describe('write', function() {
+  var rid = '2345678901234567890123456789012345678901'; 
+  it('should write a value', function(done) {
+    rpc(ROOT, [['write', [rid, 77]]],
+      function(err, results) {
+        assert(!err);
+        rpc(ROOT, [['read', [rid, {}]]],
+          function(err, results) {
+            assert(!err);
+            assert.equal(results[0][0][1], 77);
+            done();
+          });  
+      });
+  }); 
+});

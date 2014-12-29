@@ -325,10 +325,12 @@ function makeCall(call, resource, callback) {
         newResource.info.key = makeid();
         newResource.info.aliases = [];
       }
-      resource.info.children.push(newResource);
-      callback(null, {
-              status: 'ok',
-              result: rid
+      Db.create(newResource, resource, function(err) {
+        if (err) { return callback(err); }
+        callback(null, {
+                status: 'ok',
+                result: rid
+        });
       });
       break;
 

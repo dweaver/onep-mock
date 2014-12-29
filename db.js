@@ -275,4 +275,17 @@ MockDb.prototype.flush = function(rid, options, callback) {
   callback(null);
 };
 
+/**
+ * Create a resource. Assumes parent has
+ * been validated as existing and writable.
+ */
+MockDb.prototype.create = function(resource, parent, callback) {
+  parent.info.children.push(resource);
+  var type = resource.info.basic.type;
+  if (type === 'dataport' || type === 'datarule') {
+    this.series[resource.rid] = [];
+  }
+  callback(null);
+};
+
 exports.Db = MockDb;

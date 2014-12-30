@@ -542,7 +542,13 @@ describe('update', function() {
        {call: ['info', [rid, {description: true}]],
         response: function(r) {
           return r.status === 'ok' && r.result.description.name === name;
-        }}
+        }},
+       {call: ['update', [{alias: ''}, {name: name}]],
+        response: function(r) {
+          console.log('hey' + r.status);
+          return r.status === 'restricted';
+        },
+        message: 'client is not allowed to update itself'}
       ], 
       function(err) { 
         assert(!err);

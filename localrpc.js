@@ -356,7 +356,6 @@ function makeCall(call, resource, callback) {
       break;
 
     case 'update':
-      // TODO: check for updating self
       rid = getRidForArg(call.arguments[0], resource);
       if (typeof rid !== 'string') {
         return callback(rid);

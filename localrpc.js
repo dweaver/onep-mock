@@ -506,7 +506,7 @@ function makeCall(call, resource, callback) {
       if (type === 'client') {
         newResource.info.children = [];
         newResource.info.key = makeid();
-        newResource.info.aliases = [];
+        newResource.info.aliases = {};
       }
       Db.create(newResource, resource, function(err) {
         if (err) { return callback(err); }

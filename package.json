@@ -1,6 +1,6 @@
 {
   "name": "onep-mock",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Mock server for Exosite's One Platform",
   "main": "mock.js",
   "dependencies": {
@@ -16,7 +16,7 @@
     "istanbul": "~0.3.5"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",

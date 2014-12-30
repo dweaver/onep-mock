@@ -12,7 +12,7 @@ This is a HTTP server for testing applications built against [Exosite's](https:/
 - [create dataport](https://docs.exosite.com/rpc#create-dataport) (limits are stored but not enforced)
 - [create datarule](https://docs.exosite.com/rpc#create-datarule) (limits are stored but not enforced. Also datarules are stored but don't do anything, i.e. scripts and events don't work)
 - [drop](https://docs.exosite.com/rpc#drop)
-- [map](https://docs.exosite.com/rpc#map)
+- [map](https://docs.exosite.com/rpc#map) (just "alias")
 - [unmap](https://docs.exosite.com/rpc#unmap)
 - [read](https://docs.exosite.com/rpc#read) ("selection": "all")
 - [write](https://docs.exosite.com/rpc#write)

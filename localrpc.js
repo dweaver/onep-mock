@@ -38,6 +38,65 @@ function getServerTimestamp() {
   return Math.round(new Date().getTime() / 1000);
 }
 
+/* convert a set of points to the resource's native format */
+function convertFormat(resource, points) {
+  points = _.map(points, function(p) {
+    switch(resource.info.description.format) {
+      case 'integer':
+        if (typeof p[1] === 'string') {
+          p[1] = parseInt(p[1]);
+          if (_.isNaN(p[1])) {
+            // if a string doesn't parse, 1P sets it to 1.
+            p[1] = 1;
+          }
+        }
+        p[1] = Math.floor(p[1]);
+        break;
+      case 'float':
+        if (typeof p[1] === 'string') {
+          p[1] = parseFloat(p[1]);
+          if (_.isNaN(p[1])) {
+            // if a string doesn't parse, 1P sets it to 1.
+            p[1] = 1.0;
+          }
+        }
+        break;
+      default:
+        // string
+        p[1] = p[1] + '';
+        break;
+    }
+    return p;
+  });  
+  return points;
+}
+
+/**
+ * Record points to the database, handling format conversion and enforcing 
+ * resource-specific things.
+ */
+function record(resource, rid, points, callback) {
+  Db.findResourceByRIDInResource(resource, rid, function(err, targetResource) {
+    if (err) { return callback(err); }
+    if (!targetResource) {
+      err = {
+        status: 'restricted'
+      };
+      if (!STRICT) {
+        err.error = {
+          message: 'Failed to find resource ' + rid + ' in ' + resource.rid
+        };
+      }
+      callback(err);
+    } else {
+      points = convertFormat(targetResource, points);
+      Db.record(rid, points, function(err) {
+        callback(err);
+      });
+    }
+  });
+}
+
 /**
  * Look up argument. Returns RID string or error object.
  */
@@ -418,7 +477,7 @@ function makeCall(call, resource, callback) {
         }
       });
       // Note: 1P returns OK status if alias doesn't exist
-      callback(null, { status: 'ok' });
+      callback(null, {status: 'ok'});
       break; 
 
     case 'write':
@@ -428,7 +487,8 @@ function makeCall(call, resource, callback) {
       }
       var value = call.arguments[1];
       now = getServerTimestamp();
-      Db.record(rid, [[now, value]], function(err) {
+      points = [[now, value]];
+      record(resource, rid, points, function(err) {
         if (err) { return callback(err); }
         return callback(null, {status: 'ok'});
       });
@@ -449,7 +509,7 @@ function makeCall(call, resource, callback) {
           return p;
         }
       });
-      Db.record(rid, points, function(err) {
+      record(resource, rid, points, function(err) {
         if (err) { return callback(err); }
         return callback(null, {status: 'ok'});
       });

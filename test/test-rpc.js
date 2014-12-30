@@ -1,5 +1,6 @@
 var assert = require('assert');
 var _ = require('underscore');
+var async = require('async');
 var localrpc = require('../localrpc');
 
 var ROOT = "1111111111111111111111111111111111111111";
@@ -352,6 +353,45 @@ describe('read', function() {
   });
 });
 
+/**
+ * Create a test client with an assortment of dataports and datarules under it.
+ */
+function makeTestClient(cik, callback) {
+  var cb = function(err) { assert(!err); };
+  var childcik = null;
+  async.waterfall([
+    function(callback) {
+      rpc(cik, [['create', ['client', { limits: { dataport: 3 } }]]], callback);
+    },
+    function(results, callback) {
+      var rid = results[0];
+      rpc(ROOT, [['info', [rid, {key: true}]]], callback);
+    },
+    function(results, callback) {
+      childcik = results[0].key;
+      // create dataports
+      rpc(childcik, [
+        ['create', ['dataport', {format: 'float', name: 'float_name'}]],
+        ['create', ['dataport', {format: 'integer', name: 'integer_name'}]],
+        ['create', ['dataport', {format: 'string', name: 'string_name'}]],
+        ['create', ['datarule', {format: 'string', name: 'script_name', 
+          rule: {script: 'debug("hello world")'}}]]
+      ], callback);
+    },
+    function(results, callback) {
+      // map aliases to each child
+      rpc(childcik, [
+        ['map', ['alias', results[0], 'dp.float']],
+        ['map', ['alias', results[1], 'dp.integer']],
+        ['map', ['alias', results[2], 'dp.string']],
+        ['map', ['alias', results[3], 'dr']]
+      ], callback);
+    }
+  ], function(err, result) {
+    callback(err, childcik);
+  });
+}
+
 describe('write', function() {
   var rid = '2345678901234567890123456789012345678901'; 
   it('should write a value', function(done) {
@@ -418,6 +458,52 @@ describe('record', function() {
           });  
       });
   }); 
+});
+
+describe('write/record format', function() {
+  it('should correctly write and record various formats', function(done) {
+    makeTestClient(ROOT, function(err, cik) {
+      function tf(alias, val, expectval, callback) {
+        testCalls(cik,
+          [{call: ['flush', [{alias: alias}, {}]]},
+           {call: ['record', [{alias: alias}, [[1, val]]]]},
+           {call: ['read', [{alias: alias}, {}]], result: [[1, expectval]]},
+           {call: ['write', [{alias: alias}, val]]},
+           {call: ['read', [{alias: alias}, {}]], response: function(response) {
+              return response.status === 'ok' && response.result[0][1];
+            }}],
+          function(err) {
+            assert(!err);
+            callback(err);
+          });
+      }
+      // record and read back various values
+      async.series([
+        // float val
+        function(cb) { tf('dp.float', 77.7, 77.7, cb); },
+        function(cb) { tf('dp.integer', 77.7, 77, cb); },
+        function(cb) { tf('dp.string', 77.7, '77.7', cb); },
+        function(cb) { tf('dp.float', '77.7', 77.7, cb); },
+        function(cb) { tf('dp.integer', '77.7', 77, cb); },
+        function(cb) { tf('dp.string', '77.7', '77.7', cb); },
+        // string val
+        function(cb) { tf('dp.float', 'foo', 1.0, cb); },
+        function(cb) { tf('dp.integer', 'foo', 1, cb); },
+        function(cb) { tf('dp.string', 'foo', 'foo', cb); },
+        // integer val
+        function(cb) { tf('dp.float', 77, 77, cb); },
+        function(cb) { tf('dp.integer', 77, 77, cb); },
+        function(cb) { tf('dp.string', 77, '77', cb); },
+        function(cb) { tf('dp.float', '77', 77, cb); },
+        function(cb) { tf('dp.integer', '77', 77, cb); },
+        function(cb) { tf('dp.string', '77', '77', cb); },
+      ], function(err) { 
+        assert(!err);
+        done(); 
+      });
+    });
+  });
+
 });
 
 describe('flush', function() {

@@ -278,7 +278,7 @@ function validateDescription(description, type) {
     case 'datarule':
       // http://docs.exosite.com/rpc/#create-datarule
       description = validateFormat(description);
-      if (typeof description !== 'object') {
+      if (_.isObject(description)) {
         return description;
       }
       if (!_.has(description, 'rule')) { return 'missing "rule"'; }
@@ -482,7 +482,7 @@ function makeCall(call, resource, callback) {
       var type = call.arguments[0];
       desc = call.arguments[1];
       desc = validateDescription(desc, type);
-      if (typeof desc !== 'object') {
+      if (!_.isObject(desc)) {
         // here's where the platform gives you the error 'invalid'
         callback(desc);
       }

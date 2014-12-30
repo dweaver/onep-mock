@@ -23,6 +23,8 @@ This is a HTTP server for testing applications built against [Exosite's](https:/
 Compared with testing against One Platform, onep-mock allows tests to run faster because it uses an in-memory database and can run locally with your app. It also provides more feedback about app misbehavior and allows for working offline.
 
 ```
+$ git clone git@github.com:dweaver/onep-mock.git 
+$ cd onep-mock
 $ npm install
 $ supervisor mock.js
 One Platform mock server listening on 3001

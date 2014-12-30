@@ -8,7 +8,9 @@ This is a HTTP server for testing applications built against [Exosite's](https:/
 - [info](https://docs.exosite.com/rpc#info) ("description", "basic", "key", "aliases", "subscribers", "shares", "tags")
 - [listing](https://docs.exosite.com/rpc#listing) ("owned")
 - [lookup](https://docs.exosite.com/rpc#lookup) ("alias"/"aliased") 
-- [create](https://docs.exosite.com/rpc#create-client) (limits are not stored but not enforced)
+- [create client](https://docs.exosite.com/rpc#create-client) (limits are stored but not enforced)
+- [create dataport](https://docs.exosite.com/rpc#create-dataport) (limits are stored but not enforced)
+- [create datarule](https://docs.exosite.com/rpc#create-datarule) (limits are stored but not enforced. Also datarules are stored but don't do anything, i.e. scripts and events don't work)
 - [drop](https://docs.exosite.com/rpc#drop)
 - [map](https://docs.exosite.com/rpc#map)
 - [unmap](https://docs.exosite.com/rpc#unmap)
@@ -16,6 +18,7 @@ This is a HTTP server for testing applications built against [Exosite's](https:/
 - [write](https://docs.exosite.com/rpc#write)
 - [record](https://docs.exosite.com/rpc#record)
 - [flush](https://docs.exosite.com/rpc#flush)
+- [update](https://docs.exosite.com/rpc#update)
 
 Compared with testing against One Platform, onep-mock allows tests to run faster because it uses an in-memory database and can run locally with your app. It also provides more feedback about app misbehavior and allows for working offline.
 
@@ -28,10 +31,16 @@ One Platform mock server listening on 3001
 The server's in-memory database starts out with a root CIK of all 1s, with some more debug data underneath it. Once the server is running, you can run some [Exoline](https://github.com/exosite/exoline) commands against it:
 
 ```
-$ exo --http --host=127.0.0.1 --port=3001 twee 1111111111111111111111111111111111111111
+$ alias exock='exo --http --host=127.0.0.1 --port=3001 ' 
+$ exock twee 1111111111111111111111111111111111111111
 Mock Master Client    cl cik: 1111111111111111111111111111111111111111
   └─Mock Other Client    cl cik: 2222222222222222222222222222222222222222
-      └─gas  dp.i mock_gas: 34 (10 hours ago)
+      └─gas  dp.i mock_gas: 34 (Yesterday)
+danw@MacBook-Pro:~/prj/exosite/onep-mock [master]
+$ exock write 2222222222222222222222222222222222222222 mock_gas --value=35
+danw@MacBook-Pro:~/prj/exosite/onep-mock [master]
+$ exock read 2222222222222222222222222222222222222222 mock_gas
+2014-12-30 09:45:29-06:00,35
 ```
 
 The server will complain loudly if you try to do something it doesn't support yet, as when trying to call the `usage` command. 

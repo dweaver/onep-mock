@@ -1,5 +1,5 @@
 /** 
- * Partial implementation of One Platform RPC.
+ * Mock implementation of the One Platform RPC.
  */
 'use strict';
 var _ = require('underscore');
@@ -131,6 +131,86 @@ function getRidForArg(arg, resource) {
 }
 
 /** 
+ * Check a piece of a description. Returns
+ * a human-readable error message on failure,
+ * otherwise description.
+ */
+function validatePartialDescription(desc, type) {
+  function check(key, fn) {
+    if (_.has(desc, key)) {
+      if (!fn(desc[key])) {
+        return 'invalid value for ' + key + ': ' + desc[key] + '\n';
+      }
+    }
+    return '';
+  }
+  function checkObj(key, fn) {
+    var errs = '';
+    if (_.has(desc, key)) {
+      if (_.isObject(desc[key])) {
+        _.each(desc[key], function(v, innerKey) {
+          if (!fn(innerKey, v)) {
+            errs = errs + 'invalid value for ' + key + '.' + innerKey + ': ' + v + '\n'; 
+          }
+        });
+      } else {
+        errs = errs + 'invalid value for ' + key + ': ' + desc[key] + '\n';
+      }
+    }
+    return errs;
+  }
+  var errs = '';
+  errs = errs + check('locked', _.isBoolean);
+  errs = errs + check('public', _.isBoolean);
+  errs = errs + check('name', _.isString);
+  errs = errs + check('meta', _.isString);
+  errs = errs + check('format', _.isString);
+  errs = errs + check('subscribe', function(v) {
+    return _.isString(v) || v === null;
+  });
+  errs = errs + check('preprocess', _.isArray);
+  errs = errs + checkObj('limits', function(key, limit) {
+    return ((_.isNumber(limit) && Math.round(limit) === limit) ||
+          limit === 'infinite' || 
+          limit === 'inherit');
+  }); 
+  errs = errs + checkObj('retention', function(key, val) {
+    return ((_.isNumber(val) && Math.round(val) === val) ||
+          val === 'infinity');
+  }); 
+  
+  if (errs.length === 0) {
+    return desc;
+  } else {
+    return errs;
+  }
+}
+
+function filterDescription(description, type) {
+  switch(type) {
+    case 'client':
+      description = _.pick(description, ['name', 'meta', 'public', 'limits', 
+        'locked']);
+      break;
+    case 'dataport':
+      description = _.pick(description, ['name', 'meta', 'public', 'format', 
+        'preprocess', 'retention', 'subscribe']);
+      break;
+    case 'datarule':
+      description = _.pick(description, ['name', 'meta', 'public', 'format', 
+        'preprocess', 'retention', 'subscribe']);
+      break;
+    case 'dispatch':
+      description = _.pick(description, ['name', 'meta', 'public', 'locked', 
+        'message', 'method', 'preprocess', 'recipient', 'retention', 'subject', 
+        'subscribe']);
+      break;
+  }
+  return description;
+}
+
+
+/** 
  * Validate a description argument.
  */
 function validateDescription(description, type) {
@@ -140,6 +220,10 @@ function validateDescription(description, type) {
     if (!_.contains(formats, description.format)) { 
       return 'invalid: format must be in ' + JSON.stringify(formats); 
     }
+    return description;
+  }
+  description = validatePartialDescription(description, type);
+  if (!_.isObject(description)) {
     return description;
   }
   switch(type) {
@@ -169,7 +253,6 @@ function validateDescription(description, type) {
         xmpp: 0,
         xmpp_bucket: 0
       });
-      description = _.pick(description, ['limits', 'locked', 'meta', 'name', 'public']);
       break;
 
     case 'dataport':
@@ -190,7 +273,6 @@ function validateDescription(description, type) {
         count: "infinity",
         duration: "infinity"
       });
-      description = _.pick(description, ['format', 'meta', 'name', 'preprocess', 'public', 'retention', 'subscribe']);
       break;
 
     case 'datarule':
@@ -221,16 +303,16 @@ function validateDescription(description, type) {
         count: "infinity",
         duration: "infinity"
       });
-      description = _.pick(description, ['format', 'meta', 'name', 'preprocess', 'public', 'retention', 'subscribe']);
-      
       break;
+
     case 'dispatch':
-      break;
+      return 'dispatch is not supported';
     case 'clone':
       return 'create clone is not supported';
     default:
       return 'unrecognized create type ' + type;
   }
+  description = filterDescription(description, type);
   return description;
 }
 
@@ -370,9 +452,28 @@ function makeCall(call, resource, callback) {
         if (!targetResource) {
           return callback(null, {status: 'invalid'});
         }
-        var aliases = resource.info.aliases;
+        // 1P doesn't give an error for unknown properties. It 
+        // just ignores them.
+        desc = filterDescription(desc, targetResource.info.basic.type);
+        if (!_.isObject(desc)) {
+          return callback(null, {status: 'invalid', error: {message: desc}});
+        }
+        desc = validatePartialDescription(desc, type);
+        if (!_.isObject(desc)) {
+          return callback(null, {status: 'invalid', error: {message: desc}});
+        }
+        // support partial updates for limits and retention
+        function partialUpdate(key) {
+          if (_.has(desc, key)) {  
+            _.extend(targetResource.info.description[key], desc[key]);
+            delete desc[key];
+          }
+        }
+        partialUpdate('limits');
+        partialUpdate('retention');
+
         targetResource.info.description = _.extend(targetResource.info.description, desc);
-        callback(null, { status: 'ok' }); 
+        callback(null, {status: 'ok'}); 
       });
       
       break;

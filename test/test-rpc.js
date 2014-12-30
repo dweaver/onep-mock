@@ -14,21 +14,26 @@ function ok(request, callback) {
     assert.equal(err, null);
     assert.equal(response.length, request.calls.length, 
       'correct number of responses in response ' + 
-      JSON.stringify(response) + 
-      ' for call ' + JSON.stringify(request.calls));
+      jstr(response) + 
+      ' for call ' + jstr(request.calls));
     for (var i = 0; i < response.length; i++) {
       assert.equal(response[i].status, 'ok', 
         'call succeeds:\n' + 
-        JSON.stringify(request.calls[i]) +
-        ' => ' + 
-        JSON.stringify(response[i]));
+        jstr(request.calls[i]) + ' => ' + jstr(response[i]));
     }
     callback(err, _.map(response, function(r) { return r.result; }));
   };
 }
 
+/**
+ * Convenience function for stringify.
+ */
+function jstr(o) {
+  return JSON.stringify(o);
+}
+
 function makeR(auth, calls) {
-  if (typeof calls === 'string' || typeof calls[0] === 'string') { throw 'Bad arg to makeR(). Did you mean to call makeR1?'; }
+  if (typeof calls === 'string' || typeof calls[0] === 'string') { throw 'Bad arg to makeR().'; }
   if (typeof auth === 'string') { auth = {cik: auth}; }
   calls = _.map(calls, function(c) {
     return {procedure: c[0], arguments: c[1]};
@@ -38,7 +43,6 @@ function makeR(auth, calls) {
     auth: auth
   };
 }
-function makeR1(auth, procedure, args) { return makeR(auth, [[procedure, args]]); }
 
 /**
  * Convenience function for making RPC requests that are
@@ -87,7 +91,7 @@ describe('listing', function() {
       [['listing', [['function'], {owned: true}]]], 
       function(err, response) {
         assert(!err, 'no general error');
-        assert.notEqual(response[0].status, 'ok', 'status should not be ok:' + JSON.stringify(response[0]));
+        assert.notEqual(response[0].status, 'ok', 'status should not be ok:' + jstr(response[0]));
         done();
     });
   });
@@ -95,7 +99,7 @@ describe('listing', function() {
     var r = makeR(ROOT, [['listing', [['dataport'], {owned: true, aliased: true}]]]);
     localrpc.request(r, function(err, response) {
         assert(!err, 'no general error');
-        assert.notEqual(response[0].status, 'ok', 'status should not be ok:' + JSON.stringify(response[0]));
+        assert.notEqual(response[0].status, 'ok', 'status should not be ok:' + jstr(response[0]));
         done();
       });
   });
@@ -136,7 +140,7 @@ describe('info', function() {
         var keys = _.keys(results[0]).sort();
         assert(
           _.isEqual(keys, ['description', 'subscribers']),
-          JSON.stringify(_.keys(results[0]).sort()) + ' contains "description" and "subscribers"');
+          jstr(_.keys(results[0]).sort()) + ' contains "description" and "subscribers"');
         done();
     });
   });
@@ -170,7 +174,7 @@ describe('info', function() {
           "aliases": {
             "1234567890123456789012345678901234567890": ["mock_other"]
           }
-        }), 'info looks right: ' + JSON.stringify(info, null, 2));
+        }), 'info looks right: ' + jstr(info, null, 2));
       done();
     }); 
   });
@@ -253,7 +257,7 @@ describe('map / unmap', function() {
            ['info', [{alias: ''}, {aliases: true}]]],
           function(err, results) {
             assert(_.isEqual(results[0], {key: '2222222222222222222222222222222222222222'}),
-              'key should be 2s: ' + JSON.stringify(results[0]));
+              'key should be 2s: ' + jstr(results[0]));
             assert.equal(results[1], '1234567890123456789012345678901234567890');
             assert(_.contains(results[2].aliases['1234567890123456789012345678901234567890'], alias));
             done();
@@ -283,7 +287,7 @@ describe('map / unmap', function() {
             assert(_.isEqual(
               response[2].result, 
               {aliases: {'1234567890123456789012345678901234567890': ["mock_other"]}}),
-              'previous alias should still be there: ' + JSON.stringify(response[2].result));
+              'previous alias should still be there: ' + jstr(response[2].result));
             done();
           });
         }); 
@@ -295,24 +299,30 @@ function testCalls(cik, tests, callback) {
     var r = makeR(cik, [test.call]);
     localrpc.request(r, function(err, response) {
       assert.equal(err, null);
-      var message = _.has(test, 'message') ? test.message : 'testCalls() ' + i;
+      var message = _.has(test, 'message') && test.message !== null ? 
+        test.message : 'testCalls() ' + i;
       if (_.has(test, 'response')) {
         if (_.isFunction(test.response)) {
-          assert(test.response(response[0]), 
-            message + ' response function with response ' + 
-            JSON.stringify(response[0]));
+          var o = test.response(response[0]);
+          if (_.isObject(o)) {
+            assert(o.pass, o.message);
+          } else {
+            assert(o,
+              message + ' response function with response ' + 
+              jstr(response[0]));
+          }
         } else {
           assert(_.matches(response[i], test.response), 
-            message + 'response matches: ' + JSON.stringify(response[0]));
+            message + 'response matches: ' + jstr(response[0]));
         }
       } else if (_.has(test, 'result')) {
         assert.equal(response[0].status, 'ok', 
-          message + 'call succeeded: ' + JSON.stringify(response[0]));
+          message + 'call succeeded: ' + jstr(response[0]));
         assert(_.isEqual(response[0].result, test.result),
-          message + '\nresult:   ' + JSON.stringify(response[0].result) + '\nexpected: ' + JSON.stringify(test.result));
+          message + '\nresult:   ' + jstr(response[0].result) + '\nexpected: ' + jstr(test.result));
       } else {
         assert.equal(response[0].status, 'ok', 
-          message + 'call succeeded: ' + JSON.stringify(response[0]));
+          message + 'call succeeded: ' + jstr(response[0]));
       }
     });
   });
@@ -375,7 +385,8 @@ function makeTestClient(cik, callback) {
         ['create', ['dataport', {format: 'integer', name: 'integer_name'}]],
         ['create', ['dataport', {format: 'string', name: 'string_name'}]],
         ['create', ['datarule', {format: 'string', name: 'script_name', 
-          rule: {script: 'debug("hello world")'}}]]
+          rule: {script: 'debug("hello world")'}}]],
+        ['create', ['client', {name: 'client_name'}]],
       ], callback);
     },
     function(results, callback) {
@@ -384,7 +395,8 @@ function makeTestClient(cik, callback) {
         ['map', ['alias', results[0], 'dp.float']],
         ['map', ['alias', results[1], 'dp.integer']],
         ['map', ['alias', results[2], 'dp.string']],
-        ['map', ['alias', results[3], 'dr']]
+        ['map', ['alias', results[3], 'dr']],
+        ['map', ['alias', results[4], 'cl']]
       ], callback);
     }
   ], function(err, result) {
@@ -423,7 +435,7 @@ describe('record', function() {
           function(err, results) {
             assert(!err);
             assert(_.isEqual(results[0], points),
-              'points returned: ' + JSON.stringify(results[0]));
+              'points returned: ' + jstr(results[0]));
             done();
           });  
       });
@@ -450,8 +462,8 @@ describe('record', function() {
           function(err, results) {
             assert(!err);
             assert.equal(results[0][0][1], points[0][1],
-              'wrong value in point returned: ' + JSON.stringify(results[0]) + 
-              ' instead of ' + JSON.stringify(points));
+              'wrong value in point returned: ' + jstr(results[0]) + 
+              ' instead of ' + jstr(points));
             assert(starttime <= results[0][0][0] && results[0][0][0] <= endtime,
               'time in range recorded');
             done();
@@ -536,23 +548,113 @@ describe('flush', function() {
 describe('update', function() {
   var rid = '2345678901234567890123456789012345678901'; 
   var name = 'test name';
-  it('will rename resource', function(done) {
-    testCalls(ROOT,
-      [{call: ['update', [rid, {name: name}]]},
-       {call: ['info', [rid, {description: true}]],
-        response: function(r) {
-          return r.status === 'ok' && r.result.description.name === name;
-        }},
-       {call: ['update', [{alias: ''}, {name: name}]],
-        response: function(r) {
-          console.log('hey' + r.status);
-          return r.status === 'restricted';
-        },
-        message: 'client is not allowed to update itself'}
-      ], 
-      function(err) { 
+  var meta = 'test meta';
+  it('updates various parts of resource', function(done) {
+    makeTestClient(ROOT, function(err, cik) {
+      function tf(alias, obj, expectStatus, expectObj, callback, msg) {
+        testCalls(cik,
+          [{call: ['update', [{alias: alias}, obj]],
+            response: function(r) {
+              return {
+                pass: r.status === expectStatus,
+                message: 'updating ' + jstr(obj) + ' expected status "' + expectStatus + 
+                  '", got "' + r.status + '" instead' +
+                  (_.isString(msg) ? '(' + msg + ')' : '')
+              };
+            }},
+           {call: ['info', [{alias: alias}, {description: true}]],
+            response: function(r) {
+              var desc = r.result.description;
+              return {
+                pass: r.status === 'ok' && 
+                  (_.isFunction(expectObj) ? expectObj(r) : _.matches(expectObj)(desc)),
+                message: 'description after update: ' + 
+                  jstr(desc) + ' vs. expected ' + 
+                  (_.isFunction(expectObj) ? expectObj : jstr(expectObj)) + 
+                  (_.isString(msg) ? '(' + msg + ')' : '')
+              };
+            }}],
+          function(err) {
+            assert(!err);
+            callback(err);
+          });
+      }
+      // update and read back various values
+      var alias = 'dp.float';
+      function limitSmsIs(sms) {
+        return function(response) { 
+          return response.result.description.limits.sms === sms;
+        };
+      }
+      function retentionIs(retention) {
+        return function(response) { 
+          return _.isEqual(response.result.description.retention, retention);
+        };
+      }
+      function retentionUnchanged(response) {
+        return _.isEqual(response.result.description.retention, {count: 1, duration: 1});
+      }
+      async.series([
+        // name
+        function(cb) { tf(alias, {name: name}, 'ok', {name: name}, cb); },
+        function(cb) { tf(alias, {name: 14}, 'invalid', {name: name}, cb); },
+        function(cb) { tf(alias, {name: null}, 'invalid', {name: name}, cb); },
+        // meta
+        function(cb) { tf(alias, {meta: meta}, 'ok', {meta: meta}, cb); },
+        function(cb) { tf('', {meta: meta + '1'}, 'restricted', {meta: ''}, cb,
+          'client is not allowed to update itself'); },
+        function(cb) { tf(alias, {meta: 14}, 'invalid', {meta: meta}, cb); },
+        function(cb) { tf(alias, {meta: null}, 'invalid', {meta: meta}, cb); },
+        // locked
+        function(cb) { tf('cl', {locked: true}, 'ok', {locked: true}, cb); },
+        function(cb) { tf('cl', {locked: false}, 'ok', {locked: false}, cb); },
+        function(cb) { tf('cl', {locked: 'foo'}, 'invalid', {locked: false}, cb); },
+        function(cb) { tf('cl', {locked: 14}, 'invalid', {locked: false}, cb); },
+        function(cb) { tf('cl', {locked: null}, 'invalid', {locked: false}, cb); },
+        // public 
+        function(cb) { tf(alias, {public: true}, 'ok', {public: true}, cb); },
+        function(cb) { tf(alias, {public: false}, 'ok', {public: false}, cb); },
+        function(cb) { tf(alias, {public: 'foo'}, 'invalid', {public: false}, cb); },
+        function(cb) { tf(alias, {public: 14}, 'invalid', {public: false}, cb); },
+        function(cb) { tf(alias, {public: null}, 'invalid', {public: false}, cb); },
+        // limits
+        function(cb) { tf('cl', {limits: {sms: 1}}, 'ok', limitSmsIs(1), cb); },
+        function(cb) { tf('cl', {limits: {sms: 'inherit'}}, 'ok', limitSmsIs('inherit'), cb); },
+        function(cb) { tf('cl', {limits: null}, 'invalid', limitSmsIs('inherit'), cb); },
+        function(cb) { tf('cl', {limits: 12}, 'invalid', limitSmsIs('inherit'), cb); },
+        function(cb) { tf('cl', {limits: 'inherit'}, 'invalid', limitSmsIs('inherit'), cb); },
+        function(cb) { tf('cl', {limits: {sms: null}}, 'invalid', limitSmsIs('inherit'), cb); },
+        function(cb) { tf('cl', {limits: {sms: 'inheri'}}, 'invalid', limitSmsIs('inherit'), cb); },
+        function(cb) { tf('cl', {limits: {sms: 12.3}}, 'invalid', limitSmsIs('inherit'), cb); },
+        // retention
+        function(cb) { tf(alias, {retention: {count: 3}}, 'ok', 
+          retentionIs({count: 3, duration: 'infinity'}), cb); },
+        function(cb) { tf(alias, {retention: {count: 2}}, 'ok', 
+          retentionIs({count: 2, duration: 'infinity'}), cb); },
+        function(cb) { tf(alias, {retention: {count: 'infinity'}}, 'ok', 
+          retentionIs({count: 'infinity', duration: 'infinity'}), cb); },
+        function(cb) { tf(alias, {retention: {count: 1, duration: 1}}, 'ok', 
+          retentionUnchanged, cb); },
+        function(cb) { tf(alias, {retention: null}, 'invalid', 
+          retentionUnchanged, cb); },
+        function(cb) { tf(alias, {retention: 'infinity'}, 'invalid', 
+          retentionUnchanged, cb); },
+        function(cb) { tf(alias, {retention: 11}, 'invalid', 
+          retentionUnchanged, cb); },
+        function(cb) { tf(alias, {retention: {count: 'nfinite'}}, 'invalid', 
+          retentionUnchanged, cb); },
+        function(cb) { tf(alias, {retention: {duration: null}}, 'invalid', 
+          retentionUnchanged, cb); },
+        function(cb) { tf(alias, {retention: {duration: 1.5}}, 'invalid', 
+          retentionUnchanged, cb); },
+        // unknown property is ignored
+        function(cb) { tf(alias, {foo: 'bar'}, 'ok', function(response) {
+          return !_.has(response.result.description, 'foo');
+        }, cb); },
+      ], function(err) { 
         assert(!err);
         done(); 
       });
+    });
   });
 });

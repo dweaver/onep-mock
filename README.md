@@ -78,14 +78,7 @@ Then run the tests:
 
 ```
 $ mocha
-
-
-  info
-    root
-      ✓ should have infinite client limit
-
-
-  1 passing (8ms)
+...
 ```
 
 You can get a coverage report:

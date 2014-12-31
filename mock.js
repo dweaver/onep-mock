@@ -30,6 +30,7 @@ app.use(bodyParser.json());
  */
 // JSON API
 app.post('/onep:v1/rpc/process', api.rpc);
+app.post('/api:v1/rpc/process', api.rpc);
 
 var server = null;
 

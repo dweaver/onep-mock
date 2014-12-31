@@ -31,10 +31,31 @@ app.use(bodyParser.json());
 // JSON API
 app.post('/onep:v1/rpc/process', api.rpc);
 
+var server = null;
+
 /**
- * Start Server
+ * Start mock server
  */
-var port = Number(process.env.PORT || 3001);
-app.listen(port, function() {
+exports.start = function(options) {
+  if (!options) {
+    options = {};
+  }
+  var port = Number(process.env.PORT || options.port || 3001);
+  server = app.listen(port, function() {
     console.log("One Platform mock server listening on " + port);
-});
+  });
+};
+
+/**
+ * Stop mock server
+ */
+exports.stop = function() {
+  server.close(); 
+};
+
+if (require.main === module) { 
+  // called directly
+  exports.start();
+} else { 
+  // required as a module
+}

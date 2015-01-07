@@ -214,13 +214,19 @@ function filterDescription(description, type) {
  * Validate a description argument.
  */
 function validateDescription(description, type) {
-  function validateFormat(description) {
-    if (!_.has(description, 'format')) { return 'invalid: missing "format"'; }
+  function validateFormat(desc) {
+    if (!_.has(desc, 'format')) { return 'invalid: missing "format"'; }
     var formats = ['float', 'integer', 'string'];
-    if (!_.contains(formats, description.format)) { 
+    if (!_.contains(formats, desc.format)) { 
       return 'invalid: format must be in ' + JSON.stringify(formats); 
     }
-    return description;
+    return desc;
+  }
+  function validateRetention(desc) {
+    if (!_.has(desc, 'retention')) { return 'invalid: missing "retention"'; }
+    if (!_.has(desc.retention, 'count')) { return 'invalid: missing "retention.count"'; }
+    if (!_.has(desc.retention, 'duration')) { return 'invalid: missing "retention.duration"'; }
+    return desc;
   }
   description = validatePartialDescription(description, type);
   if (!_.isObject(description)) {
@@ -257,6 +263,10 @@ function validateDescription(description, type) {
 
     case 'dataport':
       // http://docs.exosite.com/rpc/#create-dataport
+      description = validateRetention(description);
+      if (typeof description !== 'object') {
+        return description;
+      }
       description = validateFormat(description);
       if (typeof description !== 'object') {
         return description;
@@ -266,17 +276,16 @@ function validateDescription(description, type) {
         name: "",
         preprocess: [],
         public: false,
-        retention: {},
         subscribe: null
-      });
-      _.defaults(description.retention, {
-        count: "infinity",
-        duration: "infinity"
       });
       break;
 
     case 'datarule':
       // http://docs.exosite.com/rpc/#create-datarule
+      description = validateRetention(description);
+      if (typeof description !== 'object') {
+        return description;
+      }
       description = validateFormat(description);
       if (_.isObject(description)) {
         return description;
@@ -296,12 +305,7 @@ function validateDescription(description, type) {
         name: "",
         preprocess: [],
         public: false,
-        retention: {},
         subscribe: null
-      });
-      _.defaults(description.retention, {
-        count: "infinity",
-        duration: "infinity"
       });
       break;
 

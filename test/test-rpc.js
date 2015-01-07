@@ -380,12 +380,13 @@ function makeTestClient(cik, callback) {
     function(results, callback) {
       childcik = results[0].key;
       // create dataports
+      var retention = {count: 'infinity', duration: 'infinity'};
       rpc(childcik, [
-        ['create', ['dataport', {format: 'float', name: 'float_name'}]],
-        ['create', ['dataport', {format: 'integer', name: 'integer_name'}]],
-        ['create', ['dataport', {format: 'string', name: 'string_name'}]],
+        ['create', ['dataport', {format: 'float', name: 'float_name', retention: retention}]],
+        ['create', ['dataport', {format: 'integer', name: 'integer_name', retention: retention}]],
+        ['create', ['dataport', {format: 'string', name: 'string_name', retention: retention}]],
         ['create', ['datarule', {format: 'string', name: 'script_name', 
-          rule: {script: 'debug("hello world")'}}]],
+          rule: {script: 'debug("hello world")'}, retention: retention}]],
         ['create', ['client', {name: 'client_name'}]],
       ], callback);
     },

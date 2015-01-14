@@ -41,7 +41,7 @@ exports.start = function(options) {
   if (!options) {
     options = {};
   }
-  var port = Number(process.env.PORT || options.port || 3001);
+  var port = Number(options.port || process.env.PORT || 3001);
   server = app.listen(port, function() {
     console.log("One Platform mock server listening on " + port);
   });

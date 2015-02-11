@@ -8,29 +8,18 @@
 /**
  * Module dependencies
  */
-var express = require('express');
 var http = require('http');
-var bodyParser = require('body-parser');
-var logfmt = require('logfmt');
+var url = require('url');
 
 var api = require('./api');
-
-var app = express();
 
 /**
  * Configuration
  */
 
-// all environments
-app.use(logfmt.requestLogger());
-app.use(bodyParser.json());
-
 /**
  * Routes
  */
-// JSON API
-app.post('/onep:v1/rpc/process', api.rpc);
-app.post('/api:v1/rpc/process', api.rpc);
 
 var server = null;
 
@@ -41,10 +30,20 @@ exports.start = function(options) {
   if (!options) {
     options = {};
   }
+  function onRequest(request, response) {
+    var pathname = url.parse(request.url).pathname;
+    if (pathname !== '/onep:v1/rpc/process' && pathname !== '/api:v1/rpc/process') {
+      response.writeHead(404, {});
+      response.end();
+    } else {
+      api.rpc(request, response);
+    }
+  }
+
+  server = http.createServer(onRequest);
   var port = Number(options.port || process.env.PORT || 3001);
-  server = app.listen(port, function() {
-    console.log("One Platform mock server listening on " + port);
-  });
+  server.listen(port);
+  console.log("One Platform mock server listening on " + port);
 };
 
 /**

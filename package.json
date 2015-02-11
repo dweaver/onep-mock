@@ -1,12 +1,9 @@
 {
   "name": "onep-mock",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Mock server for Exosite's One Platform",
   "main": "mock.js",
   "dependencies": {
-    "express": "~4.10.6",
-    "body-parser": "~1.10.0",
-    "logfmt": "~1.2.0",
     "underscore": "~1.7.0",
     "async": "~0.9.0"
   },
